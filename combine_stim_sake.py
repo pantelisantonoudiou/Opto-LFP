@@ -5,6 +5,7 @@ import adi
 import numpy as np
 import pandas as pd
 from scipy import signal
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 ##### ------------------------------------------------------------------- #####
 
@@ -49,22 +50,35 @@ def parse_stims(file_path, lfp_ch, stim_ch,
     # get animal id
     animal_id = fread.channels[lfp_ch].name.split('-')
     animal_id = '-' + animal_id[1] + '-'
-    
+
     # create output dataframe
     df = pd.DataFrame({'animal_id': np.repeat([animal_id], len(freqs)),
                        'stim_hz':freqs,
                        'start_time':start - time_from_first_peak,
                        'stop_time':stop + time_from_first_peak,
                        })
+    
     return df
 
 
-def parse_multiple_files(main_path):
-    
-    file_names = [x for x in os.listdir(main_path) if '.adicht' in x]
+def parse_multiple_files(main_path, index):
+    """
+    Detect stims from all files in index.
+
+    Parameters
+    ----------
+    main_path : str
+    index : pandas df
+
+    Returns
+    -------
+    df : pandas df
+
+    """
+
     df_list = []
-    for file in file_names:
-        file_path = os.path.join(main_path, file)
+    for i, row in tqdm(index.iterrows(), total=len(index)):
+        file_path = os.path.join(main_path, row.folder_path, row.file_name)
         df = parse_stims(file_path, lfp_ch=0, stim_ch=1)
         df_list.append(df)
     df = pd.concat(df_list, axis=0)
@@ -74,13 +88,13 @@ def parse_multiple_files(main_path):
 if __name__ == '__main__':
     
     # set path
-    main_path = r'Z:\Brad\field_recordings\VTA_ChR2_BLA\#a2_072922\analyzed'
+    main_path = r'Z:\Pantelis\Ashley_LFP\sst_chr2'
     
     # get index
     index = pd.read_csv(os.path.join(main_path, 'index.csv'))
     
     # parse all animals
-    df = parse_multiple_files(main_path)
+    df = parse_multiple_files(main_path, index)
     
     # combine
     df_list = []
