@@ -31,7 +31,6 @@ def outlier_removal(data, percentile_threshold=[1, 95]):
     data = pd.Series(data).interpolate(method='linear').values
     return data
 
-
 def filter_data(sig, fs, frange):
     """
     Filter signal and get phase.
@@ -86,9 +85,9 @@ if __name__ == '__main__':
     
     # set path and fft settings
     main_path = r'Z:\Pantelis\Ashley_LFP\sst_chr2'
-    percentile = [15, 98]
+    percentile = [25, 95]
     baseline_time = 1
-    frange = [30,50]
+    frange = [30, 58]
     
     # get index
     index = pd.read_csv(os.path.join(main_path, 'combined_index.csv'))
@@ -113,19 +112,19 @@ if __name__ == '__main__':
         # get data, remove outliers and obtain stft
         row_path = os.path.join(main_path, row['folder_path'], row['file_name'])
     
-        # get data and filter signal (add one second on either side and trim after filtering to remove artifacts)
+        # get data and filter signal (add one second on either side for filtering edge effects)
         fs = int(row.sampling_rate)
         sig, _ = get_data(row_path, data_ch=row.channel_id,
                             start= int(row['start_time'] - fs), 
                             stop= int(row['stop_time'] + fs))
         
-        # get average wave
+        # trim extra added and get average waveform
         frange = frange #[row['stim_hz']-10, row['stim_hz']+10]
         filt_sig, inst_phase = filter_data(sig, fs, frange=frange)
         sig = sig[fs:-fs]
         filt_sig = filt_sig[fs:-fs]
         inst_phase = inst_phase[fs:-fs]
-        aver_wave, amps = get_cycle_average(filt_sig, inst_phase, fs, frange, percentile=percentile)
+        aver_wave, amps = get_cycle_average(sig, inst_phase, fs, frange, percentile=percentile)
         
         
         # add to dataframe
