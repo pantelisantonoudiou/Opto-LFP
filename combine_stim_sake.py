@@ -10,18 +10,18 @@ import matplotlib.pyplot as plt
 ##### ------------------------------------------------------------------- #####
 
 
-def parse_stims(file_path, lfp_ch, stim_ch, 
-                 prominence=1):
+def parse_stims(file_path, lfp_ch, stim_ch, block,
+                 prominence=1, stim_threshold=2):
     
     # read labchart file
     fread = adi.read_file(file_path)
     
     # get stim 
     ch_obj = fread.channels[stim_ch]
-    stim = ch_obj.get_data(1)
-    fs = ch_obj.fs[0]
+    stim = ch_obj.get_data(block+1)
+    fs = ch_obj.fs[block]
 
-    # detect trains
+    # detect trains ######################!!!# make sure that it detects pulse start at peak voltage
     locs,_ = signal.find_peaks(np.gradient(stim), prominence=prominence)
 
     # recreate ttl
@@ -61,7 +61,7 @@ def parse_stims(file_path, lfp_ch, stim_ch,
     return df
 
 
-def parse_multiple_files(main_path, index):
+def parse_multiple_files(main_path, index, stim_ch=12):
     """
     Detect stims from all files in index.
 
@@ -79,7 +79,8 @@ def parse_multiple_files(main_path, index):
     df_list = []
     for i, row in tqdm(index.iterrows(), total=len(index)):
         file_path = os.path.join(main_path, row.folder_path, row.file_name)
-        df = parse_stims(file_path, lfp_ch=0, stim_ch=1)
+        df = parse_stims(file_path, lfp_ch=row.channel_id, stim_ch=stim_ch, 
+                         block=row.block, stim_threshold=2)
         df_list.append(df)
     df = pd.concat(df_list, axis=0)
     return df
@@ -88,13 +89,14 @@ def parse_multiple_files(main_path, index):
 if __name__ == '__main__':
     
     # set path
-    main_path = r'Z:\Pantelis\Ashley_LFP\sst_chr2'
+    main_path = r'Y:\Pantelis\SST_ChR2_awake'
+    stim_ch = 12
     
     # get index
-    index = pd.read_csv(os.path.join(main_path, 'index.csv'))
+    index = pd.read_csv(os.path.join(main_path, 'index.csv'),  keep_default_na=False)
     
     # parse all animals
-    df = parse_multiple_files(main_path, index)
+    df = parse_multiple_files(main_path, index, stim_ch=stim_ch)
     
     # combine
     df_list = []
