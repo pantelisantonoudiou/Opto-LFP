@@ -10,9 +10,10 @@ import matplotlib.pyplot as plt
 ##### ------------------------------------------------------------------- #####
 
 
-def parse_stims(file_path, lfp_ch, stim_ch, block,
+def parse_stims(file_path, lfp_ch, stim_ch, block, min_freq=2,
                  prominence=1, stim_threshold=2):
     
+    ttl_height = 5
     # read labchart file
     fread = adi.read_file(file_path)
     
@@ -21,21 +22,22 @@ def parse_stims(file_path, lfp_ch, stim_ch, block,
     stim = ch_obj.get_data(block+1)
     fs = ch_obj.fs[block]
 
-    # detect trains ######################!!!# make sure that it detects pulse start at peak voltage
-    locs,_ = signal.find_peaks(np.gradient(stim), prominence=prominence)
-
+    # detect trains (make stim boolean)
+    stim_bool = (stim > stim_threshold)*ttl_height
+    locs = np.where(np.diff(stim_bool) > prominence)[0] + 1
+    
     # recreate ttl
-    # ttl = fread.channels[ttl_ch].get_data(1)
-    min_freq = int(fs/3)
+    min_freq = int(fs/min_freq)
     start = locs[np.append(True, np.diff(locs) > min_freq)]
     stop = locs[np.append(np.diff(locs) > min_freq, True)]
     ttl = np.zeros(stim.shape[0])
     for x,y in zip(start,stop):
-        ttl[x:y] = 5
-
+        ttl[x:y] = ttl_height
+        
     # find pulse start and stop
-    start,_ = signal.find_peaks(np.gradient(ttl), prominence=prominence)
-    stop,_ = signal.find_peaks(np.gradient(-ttl), prominence=prominence)
+    ttl_diff = ttl[1:]-ttl[:-1]
+    start = np.where(ttl_diff > prominence)[0] + 1
+    stop = np.where(-ttl_diff > prominence)[0] + 1
     
     # find train frequency
     freqs = []
@@ -82,7 +84,7 @@ def parse_multiple_files(main_path, index, stim_ch=12):
         file_path = os.path.join(main_path, row.folder_path, row.file_name)
         df = parse_stims(file_path, lfp_ch=row.channel_id, stim_ch=stim_ch, 
                          block=row.block, stim_threshold=2)
-        df['laser'] = row.laser
+        df['file_id'] = row.file_id
         df_list.append(df)
     df = pd.concat(df_list, axis=0)
     return df
@@ -91,8 +93,8 @@ def parse_multiple_files(main_path, index, stim_ch=12):
 if __name__ == '__main__':
     
     # set path
-    main_path = r'Y:\Pantelis\SST_ChR2_awake'
-    stim_ch = 12
+    main_path = r'Z:\Pantelis\Ashley_LFP\sst_chr2'
+    stim_ch = 1
     
     # get index
     index = pd.read_csv(os.path.join(main_path, 'index.csv'), keep_default_na=False)
@@ -105,7 +107,7 @@ if __name__ == '__main__':
     df_list = []
     for i,row in index.iterrows():
         # find matching rows 
-        idx = (df['animal_id'] == row.animal_id) & (df['block']== row.block) & (df['laser']== row.laser) 
+        idx = (df['animal_id'] == row.animal_id) & (df['block']== row.block) & (df['file_id']== row.file_id) 
             # & (df['start_time']>= row.start_time) \
             # & (df['stop_time']<= row.stop_time)    
         match = df[idx]
