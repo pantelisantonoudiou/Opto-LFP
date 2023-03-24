@@ -11,12 +11,12 @@ from matplotlib.patches import Rectangle
 import seaborn as sns
 
 
-def get_data(path, data_ch, start, stop, block=1):
+def get_data(path, data_ch, start, stop, block):
     
     fread = adi.read_file(path)
     ch_obj = fread.channels[data_ch]
-    fs = ch_obj.fs[0]
-    data = ch_obj.get_data(block, start_sample=start, 
+    fs = ch_obj.fs[block]
+    data = ch_obj.get_data(block+1, start_sample=start, 
                             stop_sample=stop)
     return data, fs
     
@@ -43,7 +43,7 @@ def get_stft(data, fs, win=0.5, overlap=0.5, f_range=[2, 80]):
 if __name__ == '__main__':
     
     # set path and fft settings
-    main_path = r'Z:\Pantelis\Ashley_LFP\sst_chr2'
+    main_path = r'Y:\Pantelis\SST_ChR2_awake'
     win = 0.5
     overlap = 0.5
     f_range = [10, 49]
@@ -51,11 +51,11 @@ if __name__ == '__main__':
     baseline_time = 1
     
     # get index
-    index = pd.read_csv(os.path.join(main_path, 'combined_index.csv'))
+    index = pd.read_csv(os.path.join(main_path, 'combined_index.csv'), keep_default_na=False)
 
     # map index frequencies to correct stim values
-    index['stim_hz'] = index.groupby('stim_hz', group_keys=False)['stim_hz'].apply(pd.cut, bins=[3, 7, 15, 23, 29, 33, 37, 41, 46, 51, 65], 
-                                                                                 labels=[5, 10, 20, 25, 30, 35, 40, 45, 50, 60]).astype(int)
+    index['stim_hz'] = index.groupby('stim_hz', group_keys=False)['stim_hz'].apply(pd.cut, bins=[3, 7, 15, 23, 29, 33, 37, 41, 46, 51, 65, 74, 84, 94, 104], 
+                                                                                 labels=[5, 10, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100]).astype(int)
 
 
     power_ratio = []
@@ -70,7 +70,8 @@ if __name__ == '__main__':
         data, fs = get_data(row_path, 
                             data_ch=row.channel_id,
                             start=row['start_time'], 
-                            stop=row['stop_time'])
+                            stop=row['stop_time'],
+                            block=row.block)
         data = outlier_removal(data, percentile_threshold=outlier_threshold)
         f, t, pmat = get_stft(data, fs, win=win, overlap=overlap, 
                               f_range=[row['stim_hz']-1, row['stim_hz']+1])
@@ -80,7 +81,8 @@ if __name__ == '__main__':
         data, fs = get_data(row_path, 
                             data_ch=row.channel_id,
                             start=row['start_time'] - int(baseline_time*fs), 
-                            stop=row['start_time']-1)
+                            stop=row['start_time']-1,
+                            block=row.block)
         data = outlier_removal(data, percentile_threshold=outlier_threshold)
         f, t, pmat = get_stft(data, fs, win=win, overlap=overlap, 
                               f_range=[row['stim_hz']-1, row['stim_hz']+1])
@@ -90,7 +92,8 @@ if __name__ == '__main__':
         data, fs = get_data(row_path, 
                             data_ch=row.channel_id,
                             start=row['start_time'] - int(baseline_time*fs), 
-                            stop=row['start_time']-1)
+                            stop=row['start_time']-1,
+                            block=row.block)
         data = outlier_removal(data, percentile_threshold=outlier_threshold)
         f, t, pmat = get_stft(data, fs, win=win, overlap=overlap, 
                               f_range=f_range)
@@ -104,15 +107,15 @@ if __name__ == '__main__':
     index['power_ratio'] = power_ratio
     index['peak_freq'] = peak_freq
 
-plot_data = index.groupby(['animal_id', 'stim_hz'], ).mean(numeric_only=True).reset_index()
-sns.set(font_scale=2)
-plt.figure()
-sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar=None, style='animal_id', color='grey', alpha=.5, legend=False) #
-sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se',color ='black')
+# plot_data = index.groupby(['animal_id', 'stim_hz'], ).mean(numeric_only=True).reset_index()
+# sns.set(font_scale=2)
+# plt.figure()
+# sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar=None, style='animal_id', color='grey', alpha=.5, legend=False) #
+# sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se',color ='black')
 
-sns.relplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se', hue='animal_id', col='animal_id', kind='line')
+# sns.relplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se', hue='animal_id', col='animal_id', kind='line')
 
-sns.catplot(data=plot_data, x='animal_id', y='peak_freq', errorbar='se', kind='box')
+# sns.catplot(data=plot_data, x='animal_id', y='peak_freq', errorbar='se', kind='box')
         
         
 
