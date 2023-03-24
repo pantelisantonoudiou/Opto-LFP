@@ -70,7 +70,7 @@ def get_cycle_average(sig, inst_phase, fs, frange,
         idx = [locs[i], locs[i+ncycles]]
         aver_data[cntr,: (idx[1] - idx[0])] = sig[idx[0]:idx[1]]
         i+=ncycles
-
+    
     # select waveforms based on amplitude and cycle duration
     counts = cols - np.sum(np.isnan(aver_data), axis=1)
     idx_cycle_dur = (counts > np.percentile(counts, percentile[0])) & (counts < np.percentile(counts, percentile[1]))
@@ -85,24 +85,22 @@ if __name__ == '__main__':
     
     # set path and fft settings
     main_path = r'Z:\Pantelis\Ashley_LFP\sst_chr2'
-    percentile = [25, 95]
+    percentile = [15, 95]
     baseline_time = 1
     frange = [30, 58]
     
     # get index
     index = pd.read_csv(os.path.join(main_path, 'combined_index.csv'))
-    index = index[~index['animal_id'].isin(['-mouse1,s5pos1-','-mouse2,s2pos1-', '-mouse2,s4pos2-']) ]
     
     # map index frequencies to correct stim values
-    index = index[(index['stim_hz']>25) & (index['stim_hz']<47)]
+    index = index[(index['stim_hz']>29) & (index['stim_hz']<45)]
     index['stim_hz'] = index.groupby('stim_hz', group_keys=False)['stim_hz'].apply(pd.cut, bins=[3, 7, 15, 23, 29, 33, 37, 41, 46, 51, 65], 
                                                                                  labels=[5, 10, 20, 25, 30, 35, 40, 45, 50, 60]).astype(int)
-    
     # add baseline
     base_index = index.copy()
     stim_index = index.copy()
     base_index['condition'] = 'baseline'
-    stim_index['condition'] = 'stim'
+    stim_index['condition'] = 'stim' 
     base_index['start_time'] = stim_index['start_time'] - baseline_time*int(index.sampling_rate.iloc[0]) - 1
     base_index['stop_time'] = stim_index['start_time']  -1
     index = pd.concat([base_index, stim_index]).reset_index(drop=True)
@@ -119,7 +117,7 @@ if __name__ == '__main__':
                             stop= int(row['stop_time'] + fs))
         
         # trim extra added and get average waveform
-        frange = frange #[row['stim_hz']-10, row['stim_hz']+10]
+        frange = frange#[row['stim_hz']-1, row['stim_hz']+1] #frange #
         filt_sig, inst_phase = filter_data(sig, fs, frange=frange)
         sig = sig[fs:-fs]
         filt_sig = filt_sig[fs:-fs]
@@ -139,12 +137,12 @@ if __name__ == '__main__':
         df_list.append(df)
     
     data = pd.concat(df_list).reset_index(drop=True)
-    
     g = sns.relplot(data=data, x='time', y='aver_wave', col='animal_id', hue='condition',
                     row='stim_hz', kind='line', errorbar='se')
         
-
-    
+    aver_data = data.groupby(['animal_id', 'stim_hz', 'time', 'condition'], ).mean(numeric_only=True).reset_index()
+    g = sns.relplot(data=aver_data, x='time', y='aver_wave', hue='condition',
+                    col='stim_hz', kind='line', errorbar='se')
     
     
     
