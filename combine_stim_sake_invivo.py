@@ -82,7 +82,7 @@ def parse_multiple_files(main_path, index, stim_ch=12):
         file_path = os.path.join(main_path, row.folder_path, row.file_name)
         df = parse_stims(file_path, lfp_ch=row.channel_id, stim_ch=stim_ch, 
                          block=row.block, stim_threshold=2)
-        df['laser'] = row.laser
+        df['file_name'] = row.file_name
         df_list.append(df)
     df = pd.concat(df_list, axis=0)
     return df
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     df_list = []
     for i,row in index.iterrows():
         # find matching rows 
-        idx = (df['animal_id'] == row.animal_id) & (df['block']== row.block) & (df['laser']== row.laser) 
+        idx = (df['animal_id'] == row.animal_id) & (df['block']== row.block) & (df['file_name']== row.file_name) 
             # & (df['start_time']>= row.start_time) \
             # & (df['stop_time']<= row.stop_time)    
         match = df[idx]
