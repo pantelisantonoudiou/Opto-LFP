@@ -56,8 +56,9 @@ def parse_stims(file_path, lfp_ch, stim_ch, block,
                        'stim_hz':freqs,
                        'start_time':start - time_from_first_peak,
                        'stop_time':stop + time_from_first_peak,
+                       'block':block
                        })
-    
+
     return df
 
 
@@ -93,7 +94,7 @@ if __name__ == '__main__':
     stim_ch = 12
     
     # get index
-    index = pd.read_csv(os.path.join(main_path, 'index.csv'),  keep_default_na=False)
+    index = pd.read_csv(os.path.join(main_path, 'index.csv'), keep_default_na=False)
     
     # parse all animals
     df = parse_multiple_files(main_path, index, stim_ch=stim_ch)
@@ -102,7 +103,8 @@ if __name__ == '__main__':
     df_list = []
     for i,row in index.iterrows():
         # find matching rows
-        idx = (df['animal_id'] == row.animal_id) & (df['start_time']>= row.start_time) \
+        idx = (df['animal_id'] == row.animal_id) & (df['block']== row.block)\
+            & (df['start_time']>= row.start_time) \
             & (df['stop_time']<= row.stop_time)    
         match = df[idx]
         row = pd.DataFrame(dict(zip(row.index, row.values)), index=[i])
