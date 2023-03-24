@@ -52,25 +52,15 @@ if __name__ == '__main__':
     
     # get index
     index = pd.read_csv(os.path.join(main_path, 'combined_index.csv'))
-    index = index[~index['animal_id'].isin(['-mouse1,s5pos1-','-mouse2,s2pos1-', '-mouse2,s4pos2-']) ]
-    
+
     # map index frequencies to correct stim values
-    index = index[index['stim_hz']>4]
-    idx = (index['stim_hz']>=43) & (index['stim_hz']<=47)
-    index.loc[idx,'stim_hz'] = 45
-    idx = (index['stim_hz']>=58) & (index['stim_hz']<=61)
-    index.loc[idx,'stim_hz'] = 60
-    print(np.sort(index['stim_hz'].unique()))
-    
-    # select slice for analysis
-    plot_index = index#[index['animal_id'].isin([#'-mouse1,s5pos1-', '-mouse1,s5pos2-',
-                                                  # '-mouse2,s2pos1-', '-mouse2,s2pos2-',
-                                                # '-mouse2,s4pos1-', '-mouse2,s4pos2-'
-                                                # ]) ]
-    
+    index['stim_hz'] = index.groupby('stim_hz', group_keys=False)['stim_hz'].apply(pd.cut, bins=[3, 7, 15, 23, 29, 33, 37, 41, 46, 51, 65], 
+                                                                                 labels=[5, 10, 20, 25, 30, 35, 40, 45, 50, 60]).astype(int)
+
+
     power_ratio = []
     peak_freq = []
-    for i,row in tqdm(plot_index.iterrows(), total=len(plot_index)):
+    for i,row in tqdm(index.iterrows(), total=len(index)):
         
         # get data, remove outliers and obtain stft
         row_path = os.path.join(main_path, row['folder_path'], row['file_name'])
@@ -106,18 +96,18 @@ if __name__ == '__main__':
                               f_range=f_range)
        
         psd = np.mean(pmat, axis=1)
-        plt.plot(f,psd)
+        # plt.plot(f,psd, color='gray')
         idx = np.argmax(psd)
         peak_freq.append(f[idx])
         power_ratio.append(stim_power/base_power)
         
-    plot_index['power_ratio'] = power_ratio
-    plot_index['peak_freq'] = peak_freq
+    index['power_ratio'] = power_ratio
+    index['peak_freq'] = peak_freq
 
-plot_data = plot_index.groupby(['animal_id', 'stim_hz'], ).mean(numeric_only=True).reset_index()
+plot_data = index.groupby(['animal_id', 'stim_hz'], ).mean(numeric_only=True).reset_index()
 sns.set(font_scale=2)
 plt.figure()
-sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar=None, hue='animal_id',  alpha=.5) #color='grey',
+sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar=None, style='animal_id', color='grey', alpha=.5, legend=False) #
 sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se',color ='black')
 
 sns.relplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se', hue='animal_id', col='animal_id', kind='line')
