@@ -107,6 +107,7 @@ if __name__ == '__main__':
     
     df_list = []
     for i,row in tqdm(index.iterrows(), total=len(index)):
+
         # get data, remove outliers and obtain stft
         row_path = os.path.join(main_path, row['folder_path'], row['file_name'])
     
