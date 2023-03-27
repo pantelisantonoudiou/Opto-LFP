@@ -48,7 +48,7 @@ if __name__ == '__main__':
     overlap = 0.5
     f_range = [10, 49]
     outlier_threshold = [0.18, 99.9]
-    baseline_time = 1
+    baseline_time = 2
     
     # get index
     index = pd.read_csv(os.path.join(main_path, 'combined_index.csv'), keep_default_na=False)
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     power_ratio = []
     peak_freq = []
     for i,row in tqdm(index.iterrows(), total=len(index)):
-        
+
         # get data, remove outliers and obtain stft
         row_path = os.path.join(main_path, row['folder_path'], row['file_name'])
 
@@ -107,12 +107,17 @@ if __name__ == '__main__':
     index['power_ratio'] = power_ratio
     index['peak_freq'] = peak_freq
 
-# plot_data = index.groupby(['animal_id', 'stim_hz'], ).mean(numeric_only=True).reset_index()
-# sns.set(font_scale=2)
-# plt.figure()
+plot_data = index.groupby(['animal_id', 'stim_hz', 'laser', 'brain_region'], ).mean(numeric_only=True).reset_index()
+plot_data['power_ratio'] = plot_data['power_ratio'].astype(float)
+sns.set(font_scale=2)
+plt.figure()
 # sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar=None, style='animal_id', color='grey', alpha=.5, legend=False) #
 # sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se',color ='black')
 
+g = sns.relplot(data=index, x='stim_hz', y='power_ratio', errorbar='se', hue='animal_id',
+            col='laser', row='brain_region', kind='line')
+for ax in g.axes.flatten():
+        ax.axhline(1, linestyle = '--', color = 'gray')   
 # sns.relplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se', hue='animal_id', col='animal_id', kind='line')
 
 # sns.catplot(data=plot_data, x='animal_id', y='peak_freq', errorbar='se', kind='box')
