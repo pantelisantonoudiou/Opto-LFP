@@ -99,22 +99,21 @@ if __name__ == '__main__':
     # get index
     index = pd.read_csv(os.path.join(main_path, 'index.csv'), keep_default_na=False)
     
-    # select only one channel per file
-    # parse all animals
-    df = parse_multiple_files(main_path, index, stim_ch=stim_ch)
-    
     # combine
     df_list = []
     for i,row in index.iterrows():
+        
+        # get stims for row
+        file_path = os.path.join(main_path, row.folder_path, row.file_name)
+        df = parse_stims(file_path, lfp_ch=row.channel_id, stim_ch=stim_ch, 
+                         block=row.block, stim_threshold=2)
+        
         # find matching rows 
-        idx = (df['animal_id'] == row.animal_id) & (df['block']== row.block) & (df['file_id']== row.file_id) \
-            & (df['start_time']>= row.start_time) \
-            & (df['stop_time']<= row.stop_time)    
+        idx = (df['start_time']>= row.start_time)  & (df['stop_time']<= row.stop_time)
         match = df[idx]
         row = pd.DataFrame(dict(zip(row.index, row.values)), index=[i])
         row = match.set_index('animal_id').combine_first(row.set_index('animal_id'))
         df_list.append(row.reset_index())
-        
     index_df = pd.concat(df_list, axis=0)
     col_order = index.columns.tolist() + ['stim_hz']
     index_df = index_df[col_order]
