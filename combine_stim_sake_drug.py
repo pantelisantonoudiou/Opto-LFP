@@ -93,7 +93,7 @@ def parse_multiple_files(main_path, index, stim_ch=12):
 if __name__ == '__main__':
     
     # set path
-    main_path = r'Z:\Manny\ex_vivo\Cb1ChR2\Cb1ChR2_field\mouse5\analysis'
+    main_path = r'C:\Users\pante\Desktop\eric_opto'
     stim_ch = 1
     
     # get index
@@ -107,9 +107,9 @@ if __name__ == '__main__':
     df_list = []
     for i,row in index.iterrows():
         # find matching rows 
-        idx = (df['animal_id'] == row.animal_id) & (df['block']== row.block) & (df['file_id']== row.file_id) 
-            # & (df['start_time']>= row.start_time) \
-            # & (df['stop_time']<= row.stop_time)    
+        idx = (df['animal_id'] == row.animal_id) & (df['block']== row.block) & (df['file_id']== row.file_id) \
+            & (df['start_time']>= row.start_time) \
+            & (df['stop_time']<= row.stop_time)    
         match = df[idx]
         row = pd.DataFrame(dict(zip(row.index, row.values)), index=[i])
         row = match.set_index('animal_id').combine_first(row.set_index('animal_id'))

@@ -24,11 +24,9 @@ def parse_stims(file_path, lfp_ch, stim_ch, block, min_freq=1,
 
     # detect trains (make stim boolean)
     stim_bool = (stim > stim_threshold)*ttl_height
-    
     locs = np.where(np.diff(stim_bool) > prominence)[0] + 1
-
+    
     # recreate ttl
-    # ttl = fread.channels[ttl_ch].get_data(1)
     min_freq = int(fs/min_freq)
     start = locs[np.append(True, np.diff(locs) > min_freq)]
     stop = locs[np.append(np.diff(locs) > min_freq, True)]
@@ -62,11 +60,11 @@ def parse_stims(file_path, lfp_ch, stim_ch, block, min_freq=1,
                        'stop_time':stop + time_from_first_peak,
                        'block':block
                        })
-
+    
     return df
 
 
-def parse_multiple_files(main_path, index, stim_ch=12):
+def parse_multiple_files(main_path, index, stim_ch, stim_threshold=1):
     """
     Detect stims from all files in index.
 
@@ -74,6 +72,8 @@ def parse_multiple_files(main_path, index, stim_ch=12):
     ----------
     main_path : str
     index : pandas df
+    stim_ch:
+    stim_threshold
 
     Returns
     -------
@@ -85,7 +85,7 @@ def parse_multiple_files(main_path, index, stim_ch=12):
     for i, row in tqdm(index.iterrows(), total=len(index)):
         file_path = os.path.join(main_path, row.folder_path, row.file_name)
         df = parse_stims(file_path, lfp_ch=row.channel_id, stim_ch=stim_ch, 
-                         block=row.block, stim_threshold=2)
+                         block=row.block, stim_threshold=stim_threshold)
         df['file_name'] = row.file_name
         df_list.append(df)
     df = pd.concat(df_list, axis=0)
@@ -95,15 +95,15 @@ def parse_multiple_files(main_path, index, stim_ch=12):
 if __name__ == '__main__':
     
     # set path
-    main_path = r'Y:\Pantelis\SST_ChR2_awake'
-    stim_ch = 12
+    main_path = r'Y:\Pantelis\SST_ChR2_awake\batch2'
+    stim_ch = 3
     
     # get index
     index = pd.read_csv(os.path.join(main_path, 'index.csv'), keep_default_na=False)
     
     # select only one channel per file
     # parse all animals
-    df = parse_multiple_files(main_path, index, stim_ch=stim_ch)
+    df = parse_multiple_files(main_path, index, stim_ch, stim_threshold=.05)
     
     # combine
     df_list = []
