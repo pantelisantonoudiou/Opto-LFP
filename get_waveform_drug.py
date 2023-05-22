@@ -55,7 +55,7 @@ def get_cycle_average(sig, inst_phase, fs, frange,
                       percentile=[25, 95], ncycles=2):
     
     # find cycle peaks
-    extra_bins = 200
+    extra_bins = 500
     locs,_ = signal.find_peaks(-inst_phase)
     rows = int(np.ceil(locs.shape[0]/ncycles))
     cols = int(extra_bins+fs/frange[0]*ncycles)
@@ -63,7 +63,7 @@ def get_cycle_average(sig, inst_phase, fs, frange,
     # preallocate array
     aver_data = np.zeros((rows-1, cols))
     aver_data[:] = np.NaN
-    
+
     # extraxt waveforms
     i=0
     for cntr in range(rows-1):
@@ -86,23 +86,26 @@ if __name__ == '__main__':
     # set path and fft settings
     main_path = r'C:\Users\pante\Desktop\eric_opto'
     percentile = [15, 95]
-    baseline_time = 1
-    frange = [30, 58]
+    baseline_time = 30
+    # frange = [8, 12]
     
     # get index
     index = pd.read_csv(os.path.join(main_path, 'combined_index.csv'))
+    index = index.fillna('')
     
     # map index frequencies to correct stim values
-    index = index[(index['stim_hz']>29) & (index['stim_hz']<45)]
+    # index = index[(index['stim_hz']>29) & (index['stim_hz']<45)]
     index['stim_hz'] = index.groupby('stim_hz', group_keys=False)['stim_hz'].apply(pd.cut, bins=[3, 7, 15, 23, 29, 33, 37, 41, 46, 51, 65], 
-                                                                                 labels=[5, 10, 20, 25, 30, 35, 40, 45, 50, 60]).astype(int)
+                                                                                   labels=[5, 10, 20, 25, 30, 35, 40, 45, 50, 60]).astype(int)
+    fs = int(index.sampling_rate.iloc[0])
     # add baseline
     base_index = index.copy()
     stim_index = index.copy()
-    base_index['condition'] = 'baseline'
+    base_index['condition'] = 'pre'
     stim_index['condition'] = 'stim' 
-    base_index['start_time'] = stim_index['start_time'] - baseline_time*int(index.sampling_rate.iloc[0]) - 1
-    base_index['stop_time'] = stim_index['start_time']  -1
+    base_index['start_time'] = stim_index['start_time'] - baseline_time*fs - 1
+    base_index['stop_time'] = stim_index['start_time'] - fs - 1
+    # stim_index = stim_index[stim_index['start_time'] > 5*60*fs]
     index = pd.concat([base_index, stim_index]).reset_index(drop=True)
     
     df_list = []
@@ -118,7 +121,7 @@ if __name__ == '__main__':
                             stop= int(row['stop_time'] + fs))
         
         # trim extra added and get average waveform
-        frange = frange#[row['stim_hz']-1, row['stim_hz']+1] #frange #
+        frange = [row['stim_hz']-2, row['stim_hz']+2]
         filt_sig, inst_phase = filter_data(sig, fs, frange=frange)
         sig = sig[fs:-fs]
         filt_sig = filt_sig[fs:-fs]
@@ -130,6 +133,7 @@ if __name__ == '__main__':
         time = np.arange(len(aver_wave))/fs*1000
         df = pd.DataFrame({'animal_id':[row.animal_id]*len(aver_wave),
                            'condition':[row.condition]*len(aver_wave),
+                           'treatment':[row.treatment]*len(aver_wave),
                            'stim_hz':[row.stim_hz]*len(aver_wave),
                            'time':time,
                            'aver_wave':aver_wave,
@@ -138,12 +142,12 @@ if __name__ == '__main__':
         df_list.append(df)
     
     data = pd.concat(df_list).reset_index(drop=True)
-    g = sns.relplot(data=data, x='time', y='aver_wave', col='animal_id', hue='condition',
+    g = sns.relplot(data=data, x='time', y='aver_wave', hue='condition', col='treatment',
                     row='stim_hz', kind='line', errorbar='se')
         
-    aver_data = data.groupby(['animal_id', 'stim_hz', 'time', 'condition'], ).mean(numeric_only=True).reset_index()
-    g = sns.relplot(data=aver_data, x='time', y='aver_wave', hue='condition',
-                    col='stim_hz', kind='line', errorbar='se')
+    # aver_data = data.groupby(['animal_id', 'stim_hz', 'time', 'condition'], ).mean(numeric_only=True).reset_index()
+    # g = sns.relplot(data=aver_data, x='time', y='aver_wave', hue='condition',
+    #                 col='stim_hz', kind='line', errorbar='se')
     
     
     
