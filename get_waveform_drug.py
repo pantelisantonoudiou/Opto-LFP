@@ -106,7 +106,8 @@ if __name__ == '__main__':
     base_index['start_time'] = stim_index['start_time'] - baseline_time*fs - 1
     base_index['stop_time'] = stim_index['start_time'] - fs - 1
     # stim_index = stim_index[stim_index['start_time'] > 5*60*fs]
-    index = pd.concat([base_index, stim_index]).reset_index(drop=True)
+    index = pd.concat([base_index, stim_index]).reset_index()
+    index = index.rename(columns={'index':'trial'})
     
     df_list = []
     for i,row in tqdm(index.iterrows(), total=len(index)):
@@ -133,6 +134,7 @@ if __name__ == '__main__':
         time = np.arange(len(aver_wave))/fs*1000
         df = pd.DataFrame({'animal_id':[row.animal_id]*len(aver_wave),
                            'condition':[row.condition]*len(aver_wave),
+                           'trial':[row.trial]*len(aver_wave),
                            'treatment':[row.treatment]*len(aver_wave),
                            'stim_hz':[row.stim_hz]*len(aver_wave),
                            'time':time,
@@ -142,8 +144,12 @@ if __name__ == '__main__':
         df_list.append(df)
     
     data = pd.concat(df_list).reset_index(drop=True)
-    g = sns.relplot(data=data, x='time', y='aver_wave', hue='condition', col='treatment',
-                    row='stim_hz', kind='line', errorbar='se')
+    plot_data = data#[~data['trial'].isin([4,5,6,7,13])]
+    g = sns.relplot(data=plot_data[plot_data['condition'] =='pre'], x='time', y='aver_wave', hue='trial',#, col_wrap=4, #col='treatment',
+                    kind='line', errorbar='se') #row='stim_hz',
+    plot_data = data[~data['trial'].isin([4,5,6,7,13])]
+    g = sns.relplot(data=plot_data, x='time', y='aver_wave', hue='condition', col='trial', col_wrap=4, #col='treatment',
+                    kind='line', errorbar='se') #row='stim_hz', 
         
     # aver_data = data.groupby(['animal_id', 'stim_hz', 'time', 'condition'], ).mean(numeric_only=True).reset_index()
     # g = sns.relplot(data=aver_data, x='time', y='aver_wave', hue='condition',
