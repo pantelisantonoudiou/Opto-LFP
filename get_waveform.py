@@ -84,18 +84,16 @@ def get_cycle_average(sig, inst_phase, fs, frange,
 if __name__ == '__main__':
     
     # set path and fft settings
-    main_path = r'Z:\Pantelis\Ashley_LFP\sst_chr2'
-    percentile = [15, 95]
-    baseline_time = 1
-    frange = [30, 58]
+    main_path = r'\\rstore1\tusm_lab_maguire$\Pantelis\for analysis\LFP_awake\SST_ChR2_awake\batch2'
+    percentile = [15, 99]
+    baseline_time = 2
+    frange = [6, 12]
     
     # get index
-    index = pd.read_csv(os.path.join(main_path, 'combined_index.csv'))
+    index = pd.read_csv(os.path.join(main_path, 'combined_index.csv'),  keep_default_na=False)
     
     # map index frequencies to correct stim values
-    index = index[(index['stim_hz']>29) & (index['stim_hz']<45)]
-    index['stim_hz'] = index.groupby('stim_hz', group_keys=False)['stim_hz'].apply(pd.cut, bins=[3, 7, 15, 23, 29, 33, 37, 41, 46, 51, 65], 
-                                                                                 labels=[5, 10, 20, 25, 30, 35, 40, 45, 50, 60]).astype(int)
+    index = index[(index['stim_hz']>frange[0]) & (index['stim_hz']<frange[1])]
     # add baseline
     base_index = index.copy()
     stim_index = index.copy()
@@ -123,7 +121,7 @@ if __name__ == '__main__':
         sig = sig[fs:-fs]
         filt_sig = filt_sig[fs:-fs]
         inst_phase = inst_phase[fs:-fs]
-        aver_wave, amps = get_cycle_average(sig, inst_phase, fs, frange, percentile=percentile)
+        aver_wave, amps = get_cycle_average(filt_sig, inst_phase, fs, frange, percentile=percentile)
         
         
         # add to dataframe
