@@ -43,7 +43,7 @@ def get_stft(data, fs, win=0.5, overlap=0.5, f_range=[2, 80]):
 if __name__ == '__main__':
     
     # set path and fft settings
-    main_path = r'Y:\Pantelis\SST_ChR2_awake\batch2'
+    main_path = r'\\rstore1\tusm_lab_maguire$\Pantelis\for analysis\LFP_awake\SST_ChR2_awake\batch2'
     win = 0.5
     overlap = 0.5
     f_range = [10, 49]
@@ -118,6 +118,12 @@ g = sns.relplot(data=index, x='stim_hz', y='power_ratio', errorbar='se', hue='an
              row='brain_region', kind='line') #col='laser',
 for ax in g.axes.flatten():
         ax.axhline(1, linestyle = '--', color = 'gray')   
+        
+g = sns.relplot(data=index, x='stim_hz', y='power_ratio', errorbar='se',
+             row='brain_region', kind='line') #col='laser',
+for ax in g.axes.flatten():
+        ax.axhline(1, linestyle = '--', color = 'gray') 
+                
 # sns.relplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se', hue='animal_id', col='animal_id', kind='line')
 
 # sns.catplot(data=plot_data, x='animal_id', y='peak_freq', errorbar='se', kind='box')
