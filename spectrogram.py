@@ -43,7 +43,7 @@ def get_stft(data, fs, win=0.5, overlap=0.5, f_range=[2, 80]):
 if __name__ == '__main__':
     
     # set path and fft settings
-    main_path = r'\\rstore1\tusm_lab_maguire$\Pantelis\for analysis\LFP_awake\SST_ChR2_awake\batch2'
+    main_path = r'R:\Pantelis\for analysis\_completed\LFP_awake\SST_ChR2_awake\batch2'
     win = 0.5
     overlap = 0.5
     f_range = [10, 49]
