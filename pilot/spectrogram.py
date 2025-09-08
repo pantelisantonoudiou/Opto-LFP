@@ -109,10 +109,8 @@ if __name__ == '__main__':
 
 plot_data = index.groupby(['animal_id', 'stim_hz', 'brain_region'], ).mean(numeric_only=True).reset_index() #'laser',
 plot_data['power_ratio'] = plot_data['power_ratio'].astype(float)
-sns.set(font_scale=2)
+sns.set_theme(font_scale=2)
 plt.figure()
-# sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar=None, style='animal_id', color='grey', alpha=.5, legend=False) #
-# sns.lineplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se',color ='black')
 
 g = sns.relplot(data=index, x='stim_hz', y='power_ratio', errorbar='se', hue='animal_id',
              row='brain_region', kind='line') #col='laser',
@@ -123,37 +121,4 @@ g = sns.relplot(data=index, x='stim_hz', y='power_ratio', errorbar='se',
              row='brain_region', kind='line') #col='laser',
 for ax in g.axes.flatten():
         ax.axhline(1, linestyle = '--', color = 'gray') 
-                
-# sns.relplot(data=plot_data, x='stim_hz', y='power_ratio', errorbar='se', hue='animal_id', col='animal_id', kind='line')
-
-# sns.catplot(data=plot_data, x='animal_id', y='peak_freq', errorbar='se', kind='box')
-        
-        
-
-    
-    
-    
-        # data = (data - np.mean(data))/ np.std(data)
-    
-
-    
-    
-#     # plot data
-#     fig, axs = plt.subplots(nrows=2)
-#     time = np.arange(0, data.shape[0], 1)/fs
-#     stim_start=1
-#     stim_end=3
-#     rect = Rectangle((stim_start, -4), stim_end-stim_start, 8, linewidth=0,
-#                      facecolor='orange', alpha=0.3, zorder=10)
-#     axs[0].add_patch(rect)
-#     axs[0].plot(time, data, color='k')
-    
-    
-#     # plot spectrogram
-#     axs[1].pcolormesh(t, f, power, shading='gouraud', cmap='inferno')
-#     axs[1].title('STFT Magnitude')
-#     axs[1].set_ylabel('Frequency [Hz]')
-#     axs[1].xlabel('Time [sec]')
-#     plt.colorbar()
-
-# # plt.plot(f, np.mean(power,axis=1))
+plt.show()
