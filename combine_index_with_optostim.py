@@ -110,6 +110,61 @@ def parse_stims(file_path, lfp_ch, stim_ch, block, min_freq=1,
     })
     return df
 
+def parse_stims_all_blocks(file_path, lfp_ch, stim_ch, min_freq,
+    prominence, stim_threshold,):
+    """
+    Run `parse_stims` across *every available block* in a single LabChart file
+    and concatenate the per-block results.
+
+    Parameters
+    ----------
+    file_path : str
+        Absolute path to the LabChart file.
+    lfp_ch : int
+        Index of the LFP channel (passed through to `parse_stims`).
+    stim_ch : int
+        Stimulation channel index (1-based; same convention as `parse_stims`).
+    min_freq : float, optional
+        Minimum Hz to separate distinct trains (passed to `parse_stims`).
+    prominence : float, optional
+        Threshold on TTL diffs for edge detection (passed to `parse_stims`).
+    stim_threshold : float, optional
+        Amplitude threshold to binarize the stim signal (passed to `parse_stims`).
+
+    Returns
+    -------
+    pandas.DataFrame
+        Concatenated DataFrame over all blocks with the same schema returned by
+        `parse_stims` (columns: animal_id, stim_hz, start_time, stop_time, block).
+        If the file has no detectable blocks, returns an empty DataFrame with
+        those columns.
+    """
+    
+    # get number of blocks
+    fread = adi.read_file(file_path)
+    n_blocks = len(fread.records)
+
+    dfs = []
+    for b in range(n_blocks):
+        df_b = parse_stims(
+            file_path=file_path,
+            lfp_ch=lfp_ch,
+            stim_ch=stim_ch,
+            block=b,  # NOTE: parse_stims handles ADI's 1-based get_data internally
+            min_freq=min_freq,
+            prominence=prominence,
+            stim_threshold=stim_threshold,
+        )
+        # Ensure the block column is correct if parse_stims ever changes
+        df_b["block"] = b
+        dfs.append(df_b)
+
+    if not dfs:
+        return pd.DataFrame(columns=["animal_id", "stim_hz", "start_time", "stop_time", "block"])
+
+    return pd.concat(dfs, ignore_index=True)
+
+
 
 def parse_multiple_files(parent_path, index_df, stim_ch, stim_threshold=1,
                          min_freq=1, prominence=1, show_progress=True):
@@ -150,11 +205,10 @@ def parse_multiple_files(parent_path, index_df, stim_ch, stim_threshold=1,
         file_path = os.path.join(parent_path, row.folder_path, row.file_name)
 
         # Run detection for this file
-        df_one = parse_stims(
+        df_one = parse_stims_all_blocks(
             file_path=file_path,
             lfp_ch=row.channel_id,
             stim_ch=stim_ch,
-            block=row.block,
             min_freq=min_freq,
             prominence=prominence,
             stim_threshold=stim_threshold,
