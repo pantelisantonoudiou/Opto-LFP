@@ -137,10 +137,51 @@ class IndexInputsGUI(ctk.CTk):
         self.result = None
         self.destroy()
 
+# --- Add this helper anywhere above run_index_inputs_gui ---
+def _cleanup_tk(app):
+    """Cancel pending .after() callbacks and destroy the Tk app safely."""
+    try:
+        # Cancel all scheduled 'after' callbacks
+        try:
+            # returns a space-separated list of ids
+            after_ids = app.tk.call('after', 'info')
+            if isinstance(after_ids, str):
+                after_ids = after_ids.split()
+            for aid in after_ids:
+                try:
+                    app.after_cancel(aid)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # Finish pending idle tasks, then destroy
+        try:
+            app.update_idletasks()
+        except Exception:
+            pass
+        try:
+            app.destroy()
+        except Exception:
+            pass
+    except Exception:
+        pass
+
 def run_index_inputs_gui(defaults: dict | None = None):
     app = IndexInputsGUI(defaults=defaults)
-    app.mainloop()
-    return app.result
+
+    # Ensure window close (X) also sets a result and exits cleanly
+    def _on_close():
+        app.result = None
+        app.quit()  # leave mainloop
+    app.protocol("WM_DELETE_WINDOW", _on_close)
+
+    try:
+        app.mainloop()   # blocks until quit/destroy
+        return app.result
+    finally:
+        # Always clean up CustomTkinter/Tk callbacks and destroy root
+        _cleanup_tk(app)
 
 # Example direct run:
 if __name__ == "__main__":

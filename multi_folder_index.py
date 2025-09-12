@@ -16,18 +16,15 @@ Folder Contract
 - If no subfolders exist, `root_dir` itself is treated as one condition.
 - The unified index is saved to `root_dir` (default: `unified_index.csv`).
 """
+
 # =============================================================================
 #                                 Imports
 # =============================================================================
 import os
-import sys
 import pandas as pd
 from tqdm import tqdm
-
-# Adjust import path/module names to match your project layout.
 from build_index import IndexMaker, build_stim_index
 from index_inputs_gui import run_index_inputs_gui
-
 # =============================================================================
 # =============================================================================
 
@@ -148,6 +145,9 @@ if __name__ == "__main__":
     #    - stim_channel_name: stim channel identifier (e.g. "opto")
     # ------------------------------------------------------------------
     settings = run_index_inputs_gui()
+    if settings is None:
+        raise Exception('No User Inputs. Aborting operation.')
+    
 
     # ------------------------------------------------------------------
     # 2) Define stimulation detection parameters:

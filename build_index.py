@@ -8,7 +8,6 @@ import pandas as pd
 import adi
 from index_inputs_gui import run_index_inputs_gui
 from tqdm import tqdm
-
 # =============================================================================
 # =============================================================================
 
