@@ -408,23 +408,3 @@ if __name__ == '__main__':
     # build final stim index
     merged = build_stim_index(filt_index, idx_maker, stim_settings)
     
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
