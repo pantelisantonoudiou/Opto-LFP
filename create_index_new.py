@@ -12,7 +12,6 @@ from tqdm import tqdm
 # =============================================================================
 # =============================================================================
 
-
 def parse_stims(file_path, stim_ch, block, min_freq=1, prominence=1, stim_threshold=2, ttl_height=5):
     """
     Parse stimulation trains from a LabChart file.
@@ -93,9 +92,50 @@ def parse_stims(file_path, stim_ch, block, min_freq=1, prominence=1, stim_thresh
 
 
 class IndexMaker():
-    
+    """
+    Build and manipulate an index of channels and stimulation metadata for LabChart ADI files.
+
+    This helper class:
+      1) Scans a root directory for `.adicht` files.
+      2) Validates that each file contains exactly one stimulation channel matching
+         a user-provided name (substring match, case-insensitive).
+      3) Extracts per-file / per-channel / per-block properties into a tidy DataFrame.
+      4) Filters out unwanted channels using user-specified keywords.
+      5) Provides an iterator utility to apply a single function across all files.
+
+    Parameters
+    ----------
+    root_dir : str
+        Directory containing LabChart `.adicht` files.
+    channel_names : list[str]
+        List of channel search terms (e.g., brain region names) to include. Matches are
+        done via substring search (case-insensitive).
+    drop_keywords : list[str]
+        List of substrings used to drop channels later (e.g., ["empty", "unused"]).
+    stim_channel_name : str
+        Substring that identifies the stimulation channel (case-insensitive).
+
+    Attributes
+    ----------
+    root_dir : str
+        Root directory scanned for `.adicht` files.
+    selected_channels : list[str]
+        Search terms for channels/brain regions to include.
+    drop_keywords : list[str]
+        Substrings used to filter out channels in `drop_rows`.
+    stim_name : str
+        Substring used to locate the stimulation channel.
+    adi_files : list[str]
+        Filenames (not full paths) of detected `.adicht` files.
+
+    Notes
+    -----
+    - No logic within methods is altered; comments and docstrings only.
+    - Channel matching uses Pandas `str.contains` with case-insensitive search.
+    """
+
     def __init__(self, root_dir, channel_names, drop_keywords, stim_channel_name):
-        
+        """Initialize configuration and discover `.adicht` files in the root directory."""
         # get settings
         self.root_dir = root_dir
         self.selected_channels = channel_names
@@ -110,7 +150,24 @@ class IndexMaker():
             raise Exception('No labchart files detected. Aborting operation')
     
     def stim_channel_check(self, adi_path):
-        
+        """
+        Verify that exactly one stimulation channel exists in a given ADI file.
+
+        Parameters
+        ----------
+        adi_path : str
+            Full path to a `.adicht` file.
+
+        Raises
+        ------
+        Exception
+            If zero or more than one stimulation channels are found.
+
+        Returns
+        -------
+        None
+            Used for side-effect validation only.
+        """
         # read channel and get stim containing channels
         adi_obj = adi.read_file(adi_path)
         channels = pd.Series([ch.name for ch in adi_obj.channels]).str.lower()
@@ -124,7 +181,32 @@ class IndexMaker():
         return None
             
     def get_properties(self, adi_path):
-        
+        """
+        Extract per-channel and per-block properties from a single ADI file.
+
+        For each user-requested channel term (in `self.selected_channels`), this
+        scans the file's channels for substring matches, then emits one row per
+        (matched channel, block) with metadata required to later parse stims and
+        join results.
+
+        Parameters
+        ----------
+        adi_path : str
+            Full path to a `.adicht` file.
+
+        Returns
+        -------
+        pandas.DataFrame or None
+            DataFrame with columns:
+              - filename : str (basename without extension)
+              - sampling_rate : int (Hz)
+              - stim_channel_id : int (index of stim channel in the ADI file)
+              - adi_channel_name : str (matched channel name, lowercase)
+              - brain_region : str (the search term that matched)
+              - channel_id : int (index of the matched channel)
+              - block : int (block number)
+            Returns None if no properties are detected.
+        """
         # read file and get properties for each block
         # only include channels found
         adi_obj = adi.read_file(adi_path)
@@ -162,7 +244,26 @@ class IndexMaker():
         return None
             
     def iterate_files(self, func):
-        
+        """
+        Apply a single callable to each ADI file and collect non-None outputs.
+
+        The callable should accept a single argument: the full path to the file.
+        If the callable returns a DataFrame for some files, those frames are concatenated
+        and returned; otherwise returns None.
+
+        Parameters
+        ----------
+        func : Callable[[str], Any]
+            Function applied to each file path. Often one of:
+              - `self.stim_channel_check`  (validation, returns None)
+              - `self.get_properties`      (returns a DataFrame per file)
+
+        Returns
+        -------
+        pandas.DataFrame or None
+            Concatenated output of all non-None returns from `func`.
+            Returns None if nothing is collected.
+        """
         # iterate over files and apply function
         output_list = []
         for adi_file in tqdm(self.adi_files):
@@ -176,49 +277,62 @@ class IndexMaker():
             return None
         
     def drop_rows(self, file_index):
+        """
+        Drop rows whose `adi_channel_name` contains any of `self.drop_keywords`.
+
+        Parameters
+        ----------
+        file_index : pandas.DataFrame
+            DataFrame produced by `get_properties` (or a concatenation thereof).
+
+        Returns
+        -------
+        pandas.DataFrame
+            Filtered DataFrame with rows containing drop keywords removed.
+            Index is reset after filtering.
+        """
         filt_index = file_index.copy()
         str_filter = "|".join(self.drop_keywords)
         mask = filt_index['adi_channel_name'].str.contains(str_filter, case=False)
         return filt_index[~mask].reset_index()
-        
 
-if __name__ == '__main__':
-    
-    # File contract
-    # Note each file has one animal, multiple empty channels that we need to drop (number varies)
-    # Each file has one stim channel and multiple blocks
+def build_stim_index(filt_index, idx_maker, stim_settings):
+    """
+    Detect stimulation trains for each (filename, block) group and merge results
+    with the provided filtered index.
 
-    # get user input
-    settings = run_index_inputs_gui()
-    stim_settings = {
-        "stim_threshold": 0.05,
-        "min_freq": 1.0,
-        "prominence": 1.0,
-    }
-    
-    # instantiate maker class
-    idx_maker = IndexMaker(
-        root_dir=settings['root_dir'],
-        channel_names=settings['channel_names'],
-        drop_keywords=settings['drop_keywords'],
-        stim_channel_name= settings['stim_channel_name'],
-        )
-    
-    idx_maker.iterate_files(idx_maker.stim_channel_check)
-    file_index = idx_maker.iterate_files(idx_maker.get_properties)
-    
-    # drop keywords
-    filt_index = idx_maker.drop_rows(file_index)
-    
-    # detect stims, append to stim_df_list and create a dataframe
-    # group per file and block to reduce operations
+    Parameters
+    ----------
+    filt_index : pandas.DataFrame
+        Filtered index of channels from IndexMaker.get_properties + drop_rows.
+        Must include at least columns: ['filename', 'block', 'stim_channel_id'].
+    idx_maker : IndexMaker
+        Instance of IndexMaker with valid root_dir.
+    stim_settings : dict
+        Dictionary with stim parsing parameters, e.g.:
+        {
+            "stim_threshold": 0.05,
+            "min_freq": 1.0,
+            "prominence": 1.0,
+        }
+
+    Returns
+    -------
+    pandas.DataFrame
+        Merged DataFrame combining channel properties and stimulation metadata.
+    """
     stim_df_list = []
+
+    # group per file and block to reduce redundant stim parsing
     group_df = filt_index.groupby(['filename', 'block'])
     for (filename, block), df in tqdm(group_df, total=len(group_df)):
-        
-        # parse stims and return df
+        # full path to .adicht file
         file_path = os.path.join(idx_maker.root_dir, filename + '.adicht')
+
+        # each group should have a single stim_channel_id
         stim_id = df['stim_channel_id'].unique()[0]
+
+        # parse stim trains
         stim_df = parse_stims(
             file_path=file_path,
             stim_ch=stim_id,
@@ -226,16 +340,73 @@ if __name__ == '__main__':
             min_freq=stim_settings['min_freq'],
             prominence=stim_settings['prominence'],
             stim_threshold=stim_settings['stim_threshold'],
-            )
-        
-        # add group conditions and append to list
+        )
+
+        # annotate with grouping metadata
         stim_df['filename'] = filename
         stim_df['block'] = block
         stim_df_list.append(stim_df)
+
+    # combine stim data across all groups
     all_stim_df = pd.concat(stim_df_list, axis=0).reset_index(drop=True)
-    
-    # join dfs
+
+    # merge with channel index
     merged = pd.merge(filt_index, all_stim_df, on=['filename', 'block'], how='inner')
+    return merged
+
+if __name__ == '__main__':
+    
+    """
+    Main execution pipeline for building a stimulation index from LabChart ADI files.
+
+    File/Data Contract
+    ------------------
+    - Each `.adicht` file corresponds to one animal.
+    - Each file may contain multiple blocks (recordings).
+    - Each file must contain exactly one stimulation channel (e.g. opto TTL).
+    - Files may contain multiple empty/unwanted channels, removed via `drop_keywords`.
+
+    Workflow
+    --------
+    - Collect user-defined settings via GUI.
+    - Initialize IndexMaker and discover `.adicht` files.
+    - Validate that each file has exactly one stim channel.
+    - Extract per-file, per-block channel properties.
+    - Drop channels matching user-defined keywords.
+    - Parse stimulation trains for each file/block.
+    - Merge channel properties with stim metadata into final index.
+    """
+
+    # get user input
+    settings = run_index_inputs_gui()
+    if settings is None:
+        raise Exception('No User Inputs. Aborting operation.')
+    
+    stim_settings = {
+        "stim_threshold": 0.05,
+        "min_freq": 1.0,
+        "prominence": 1.0,
+    }
+    
+    # instantiate index maker class
+    idx_maker = IndexMaker(
+        root_dir=settings['root_dir'],
+        channel_names=settings['channel_names'],
+        drop_keywords=settings['drop_keywords'],
+        stim_channel_name= settings['stim_channel_name'],
+        )
+    
+    # check for detection of one stim channel per file
+    print('Stim Check...')
+    idx_maker.iterate_files(idx_maker.stim_channel_check)
+    
+    # create an index file for each block/recording
+    print('...')
+    file_index = idx_maker.iterate_files(idx_maker.get_properties)
+    filt_index = idx_maker.drop_rows(file_index)
+    
+    # build final stim index
+    merged = build_stim_index(filt_index, idx_maker, stim_settings)
     
     
 
