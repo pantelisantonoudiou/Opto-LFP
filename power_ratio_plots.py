@@ -51,7 +51,7 @@ if __name__ == "__main__":
         ax.set_ylabel("power ratio (stim / baseline)")
     g.figure.suptitle("power ratio by condition", y=1.02)
     
-    
+    plt.show()
     
     
     
